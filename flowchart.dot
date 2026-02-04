@@ -1,0 +1,29 @@
+digraph FlowChart {
+    // Graph settings
+    rankdir=TB;
+    node [shape=box, style=rounded, fontname="Arial"];
+    edge [fontname="Arial"];
+    
+    // Define nodes
+    start [label="Start", shape=ellipse, style=filled, fillcolor=lightgreen];
+    step1 [label="Step 1:\nInitialize Process"];
+    step2 [label="Step 2:\nCollect Data"];
+    decision [label="Is Data Valid?", shape=diamond, style=filled, fillcolor=lightyellow];
+    step3 [label="Step 3:\nProcess Data"];
+    step4 [label="Step 4:\nGenerate Output"];
+    step5 [label="Step 5:\nSave Results"];
+    end_node [label="End", shape=ellipse, style=filled, fillcolor=lightcoral];
+    
+    // Define edges (flow)
+    start -> step1;
+    step1 -> step2;
+    step2 -> decision;
+    
+    // Decision branches
+    decision -> step3 [label="Yes"];
+    decision -> step2 [label="No\n(Loop back)", style=dashed, color=red];
+    
+    step3 -> step4;
+    step4 -> step5;
+    step5 -> end_node;
+}
