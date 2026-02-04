@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Kubernetes with Priority Scheduler for GPU Servers</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        h2 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.5rem;
+            margin-top: 2rem;
+        }
+        h3 {
+            color: #764ba2;
+            margin-top: 1.5rem;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            border-left: 4px solid #667eea;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        .server-list {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        ul {
+            line-height: 2;
+        }
+        .toc {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .toc li {
+            margin: 0.5rem 0;
+        }
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🚀 Building Kubernetes with Priority Scheduler for GPU Servers</h1>
+        <p>A comprehensive guide to setting up a 5-node Kubernetes cluster with priority-based scheduling for GPU workloads</p>
+    </header>
+
+    <div class="container">
+        <div class="toc">
+            <h2 style="margin-top: 0; border: none;">📋 Table of Contents</h2>
+            <ul>
+                <li><a href="#overview">1. Overview</a></li>
+                <li><a href="#prerequisites">2. Prerequisites and Server Setup</a></li>
+                <li><a href="#installation">3. Installing Kubernetes Components</a></li>
+                <li><a href="#cluster-init">4. Initializing the Cluster</a></li>
+                <li><a href="#gpu-support">5. Setting Up GPU Support</a></li>
+                <li><a href="#priority-scheduler">6. Configuring Priority Scheduler</a></li>
+                <li><a href="#deployment">7. Deploying Priority Classes</a></li>
+                <li><a href="#testing">8. Testing and Verification</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container" id="overview">
+        <h2>1. Overview</h2>
+        <p>This guide demonstrates how to build a production-ready Kubernetes cluster with the priority scheduler for managing GPU workloads across five servers. The priority scheduler ensures that critical workloads get access to GPU resources before lower-priority tasks.</p>
+        
+        <div class="server-list">
+            <h3>Cluster Architecture</h3>
+            <ul>
+                <li><strong>gpu-server-01:</strong> Control Plane Node (Master)</li>
+                <li><strong>gpu-server-02:</strong> Worker Node with GPU</li>
+                <li><strong>gpu-server-03:</strong> Worker Node with GPU</li>
+                <li><strong>gpu-server-04:</strong> Worker Node with GPU</li>
+                <li><strong>gpu-server-05:</strong> Worker Node with GPU</li>
+            </ul>
+        </div>
+
+        <div class="note">
+            <strong>📝 Note:</strong> This setup uses kubeadm for cluster initialization and the Kubernetes default scheduler with PriorityClass resources for workload prioritization.
+        </div>
+    </div>
+
+    <div class="container" id="prerequisites">
+        <h2>2. Prerequisites and Server Setup</h2>
+        
+        <h3>Hardware Requirements</h3>
+        <ul>
+            <li>5 servers with Ubuntu 20.04 or 22.04 LTS</li>
+            <li>At least 4 GB RAM per node (8 GB recommended)</li>
+            <li>2 CPUs or more per node</li>
+            <li>NVIDIA GPUs installed on worker nodes</li>
+            <li>Network connectivity between all nodes</li>
+        </ul>
+
+        <h3>Step 1: Update System on All Nodes</h3>
+        <pre><code># Run on all 5 servers
+sudo apt-get update
+sudo apt-get upgrade -y</code></pre>
+
+        <h3>Step 2: Disable Swap</h3>
+        <p>Kubernetes requires swap to be disabled:</p>
+        <pre><code># Run on all 5 servers
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab</code></pre>
+
+        <h3>Step 3: Configure Kernel Modules</h3>
+        <pre><code># Run on all 5 servers
+cat &lt;&lt;EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter</code></pre>
+
+        <h3>Step 4: Configure Sysctl Parameters</h3>
+        <pre><code># Run on all 5 servers
+cat &lt;&lt;EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+sudo sysctl --system</code></pre>
+
+        <h3>Step 5: Set Hostnames</h3>
+        <pre><code># On each server, set appropriate hostname
+sudo hostnamectl set-hostname gpu-server-01  # On master
+sudo hostnamectl set-hostname gpu-server-02  # On worker 1
+sudo hostnamectl set-hostname gpu-server-03  # On worker 2
+sudo hostnamectl set-hostname gpu-server-04  # On worker 3
+sudo hostnamectl set-hostname gpu-server-05  # On worker 4</code></pre>
+
+        <h3>Step 6: Update Hosts File</h3>
+        <pre><code># Run on all 5 servers - replace with your actual IP addresses
+cat &lt;&lt;EOF | sudo tee -a /etc/hosts
+192.168.1.101 gpu-server-01
+192.168.1.102 gpu-server-02
+192.168.1.103 gpu-server-03
+192.168.1.104 gpu-server-04
+192.168.1.105 gpu-server-05
+EOF</code></pre>
+    </div>
+
+    <div class="container" id="installation">
+        <h2>3. Installing Kubernetes Components</h2>
+
+        <h3>Step 1: Install Container Runtime (containerd)</h3>
+        <pre><code># Run on all 5 servers
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+
+# Install containerd
+sudo apt-get install -y containerd
+
+# Configure containerd
+sudo mkdir -p /etc/containerd
+containerd config default | sudo tee /etc/containerd/config.toml
+
+# Enable SystemdCgroup
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+
+# Restart containerd
+sudo systemctl restart containerd
+sudo systemctl enable containerd</code></pre>
+
+        <h3>Step 2: Install Kubernetes Packages</h3>
+        <pre><code># Run on all 5 servers
+# Add Kubernetes apt repository
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# Install kubelet, kubeadm, and kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# Enable kubelet
+sudo systemctl enable kubelet</code></pre>
+    </div>
+
+    <div class="container" id="cluster-init">
+        <h2>4. Initializing the Cluster</h2>
+
+        <h3>Step 1: Initialize Control Plane (Master Node)</h3>
+        <p>Run this only on <strong>gpu-server-01</strong>:</p>
+        <pre><code># On gpu-server-01 (master)
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.1.101
+
+# After successful initialization, set up kubectl
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config</code></pre>
+
+        <div class="note">
+            <strong>📝 Important:</strong> Save the <code>kubeadm join</code> command that appears after initialization. You'll need it to join worker nodes.
+        </div>
+
+        <h3>Step 2: Install Pod Network (Flannel)</h3>
+        <p>Run on <strong>gpu-server-01</strong> (master):</p>
+        <pre><code>kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml</code></pre>
+
+        <h3>Step 3: Join Worker Nodes</h3>
+        <p>Run on <strong>gpu-server-02, gpu-server-03, gpu-server-04, gpu-server-05</strong>:</p>
+        <pre><code># Use the join command from kubeadm init output
+sudo kubeadm join 192.168.1.101:6443 --token &lt;token&gt; \
+    --discovery-token-ca-cert-hash sha256:&lt;hash&gt;</code></pre>
+
+        <h3>Step 4: Verify Cluster</h3>
+        <p>Run on <strong>gpu-server-01</strong> (master):</p>
+        <pre><code>kubectl get nodes
+
+# Expected output:
+# NAME            STATUS   ROLES           AGE   VERSION
+# gpu-server-01   Ready    control-plane   5m    v1.28.x
+# gpu-server-02   Ready    &lt;none&gt;          3m    v1.28.x
+# gpu-server-03   Ready    &lt;none&gt;          3m    v1.28.x
+# gpu-server-04   Ready    &lt;none&gt;          3m    v1.28.x
+# gpu-server-05   Ready    &lt;none&gt;          3m    v1.28.x</code></pre>
+    </div>
+
+    <div class="container" id="gpu-support">
+        <h2>5. Setting Up GPU Support</h2>
+
+        <h3>Step 1: Install NVIDIA Drivers</h3>
+        <p>Run on worker nodes (<strong>gpu-server-02 through gpu-server-05</strong>):</p>
+        <pre><code># Install NVIDIA driver
+sudo apt-get update
+sudo apt-get install -y nvidia-driver-535
+
+# Reboot to load driver
+sudo reboot
+
+# After reboot, verify
+nvidia-smi</code></pre>
+
+        <h3>Step 2: Install NVIDIA Container Toolkit</h3>
+        <p>Run on worker nodes with GPUs:</p>
+        <pre><code># Configure repository
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+# Install toolkit
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+
+# Configure containerd
+sudo nvidia-ctk runtime configure --runtime=containerd
+sudo systemctl restart containerd</code></pre>
+
+        <h3>Step 3: Deploy NVIDIA Device Plugin</h3>
+        <p>Run on <strong>gpu-server-01</strong> (master):</p>
+        <pre><code>kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.0/nvidia-device-plugin.yml</code></pre>
+
+        <h3>Step 4: Verify GPU Availability</h3>
+        <pre><code>kubectl get nodes "-o=custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu"
+
+# Expected output showing GPU count on each node:
+# NAME            GPU
+# gpu-server-01   &lt;none&gt;
+# gpu-server-02   1
+# gpu-server-03   1
+# gpu-server-04   1
+# gpu-server-05   1</code></pre>
+    </div>
+
+    <div class="container" id="priority-scheduler">
+        <h2>6. Configuring Priority Scheduler</h2>
+
+        <p>Kubernetes uses PriorityClass resources to implement priority-based scheduling. The scheduler automatically considers pod priorities when making scheduling decisions.</p>
+
+        <h3>Understanding PriorityClass</h3>
+        <div class="note">
+            <p><strong>How it works:</strong></p>
+            <ul>
+                <li>Pods with higher priority are scheduled before lower priority pods</li>
+                <li>If a high-priority pod cannot be scheduled, the scheduler can preempt (evict) lower-priority pods</li>
+                <li>Priority values range from -2147483648 to 2147483647</li>
+                <li>System-critical pods typically use priority values of 2000000000 or higher</li>
+            </ul>
+        </div>
+
+        <h3>Step 1: Create Priority Classes</h3>
+        <p>Save the following as <code>priority-classes.yaml</code>:</p>
+        <pre><code>---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority-gpu
+value: 1000000
+globalDefault: false
+description: "High priority for critical GPU workloads"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: medium-priority-gpu
+value: 500000
+globalDefault: false
+description: "Medium priority for standard GPU workloads"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority-gpu
+value: 100000
+globalDefault: false
+description: "Low priority for batch GPU workloads"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: best-effort-gpu
+value: 0
+globalDefault: true
+description: "Best effort priority for non-critical workloads"</code></pre>
+
+        <h3>Step 2: Apply Priority Classes</h3>
+        <pre><code>kubectl apply -f priority-classes.yaml
+
+# Verify
+kubectl get priorityclasses
+
+# Expected output:
+# NAME                      VALUE        GLOBAL-DEFAULT   AGE
+# best-effort-gpu           0            true             10s
+# high-priority-gpu         1000000      false            10s
+# low-priority-gpu          100000       false            10s
+# medium-priority-gpu       500000       false            10s
+# system-cluster-critical   2000000000   false            15m
+# system-node-critical      2000001000   false            15m</code></pre>
+    </div>
+
+    <div class="container" id="deployment">
+        <h2>7. Deploying Priority Classes</h2>
+
+        <h3>Example 1: High-Priority GPU Workload</h3>
+        <p>Save as <code>high-priority-pod.yaml</code>:</p>
+        <pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: high-priority-gpu-pod
+  labels:
+    priority: high
+spec:
+  priorityClassName: high-priority-gpu
+  containers:
+  - name: cuda-container
+    image: nvidia/cuda:11.8.0-base-ubuntu22.04
+    command: ["nvidia-smi"]
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+  restartPolicy: Never</code></pre>
+
+        <h3>Example 2: Medium-Priority Training Job</h3>
+        <p>Save as <code>medium-priority-job.yaml</code>:</p>
+        <pre><code>apiVersion: batch/v1
+kind: Job
+metadata:
+  name: medium-priority-training
+spec:
+  template:
+    metadata:
+      labels:
+        priority: medium
+    spec:
+      priorityClassName: medium-priority-gpu
+      containers:
+      - name: pytorch-training
+        image: pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
+        command: ["python", "-c", "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}')"]
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+      restartPolicy: Never
+  backoffLimit: 4</code></pre>
+
+        <h3>Example 3: Low-Priority Batch Processing</h3>
+        <p>Save as <code>low-priority-deployment.yaml</code>:</p>
+        <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: low-priority-batch
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: batch-processor
+  template:
+    metadata:
+      labels:
+        app: batch-processor
+        priority: low
+    spec:
+      priorityClassName: low-priority-gpu
+      containers:
+      - name: batch-processor
+        image: nvidia/cuda:11.8.0-base-ubuntu22.04
+        command: ["sh", "-c", "while true; do nvidia-smi; sleep 300; done"]
+        resources:
+          limits:
+            nvidia.com/gpu: 1</code></pre>
+
+        <h3>Deploy Example Workloads</h3>
+        <pre><code># Deploy high-priority pod
+kubectl apply -f high-priority-pod.yaml
+
+# Deploy medium-priority job
+kubectl apply -f medium-priority-job.yaml
+
+# Deploy low-priority deployment
+kubectl apply -f low-priority-deployment.yaml</code></pre>
+    </div>
+
+    <div class="container" id="testing">
+        <h2>8. Testing and Verification</h2>
+
+        <h3>Step 1: Check Pod Status and Priority</h3>
+        <pre><code>kubectl get pods -o wide
+
+# Check pod priority
+kubectl get pods -o custom-columns=NAME:.metadata.name,PRIORITY:.spec.priority,PRIORITY-CLASS:.spec.priorityClassName,NODE:.spec.nodeName</code></pre>
+
+        <h3>Step 2: Test Priority Preemption</h3>
+        <p>Create a scenario where high-priority pods preempt low-priority ones:</p>
+        <pre><code># Fill cluster with low-priority pods
+kubectl apply -f low-priority-deployment.yaml
+kubectl scale deployment low-priority-batch --replicas=4
+
+# Wait for pods to be running
+kubectl wait --for=condition=ready pod -l app=batch-processor --timeout=300s
+
+# Deploy high-priority pods (should preempt low-priority)
+kubectl apply -f high-priority-pod.yaml
+
+# Watch the preemption happen
+kubectl get pods -w</code></pre>
+
+        <h3>Step 3: View Scheduler Events</h3>
+        <pre><code># Check events for preemption
+kubectl get events --sort-by='.lastTimestamp' | grep -i preempt
+
+# Describe pod to see scheduling details
+kubectl describe pod high-priority-gpu-pod</code></pre>
+
+        <h3>Step 4: Monitor GPU Utilization</h3>
+        <pre><code># Check GPU allocation per node
+kubectl describe nodes | grep -A 5 "Allocated resources"
+
+# Or use a more focused command
+for node in $(kubectl get nodes -o name | grep gpu-server); do
+  echo "=== $node ==="
+  kubectl describe $node | grep -A 3 "nvidia.com/gpu"
+done</code></pre>
+
+        <h3>Step 5: Test Resource Constraints</h3>
+        <div class="warning">
+            <strong>⚠️ Verification Checklist:</strong>
+            <ul>
+                <li>✅ All nodes show as Ready</li>
+                <li>✅ GPU devices are allocatable on worker nodes</li>
+                <li>✅ PriorityClasses are created and visible</li>
+                <li>✅ High-priority pods schedule before low-priority</li>
+                <li>✅ Preemption occurs when resources are scarce</li>
+                <li>✅ GPU workloads can access NVIDIA devices</li>
+            </ul>
+        </div>
+
+        <h3>Troubleshooting Common Issues</h3>
+        <pre><code># If nodes are NotReady
+kubectl describe node &lt;node-name&gt;
+
+# If pods are Pending
+kubectl describe pod &lt;pod-name&gt;
+
+# Check scheduler logs
+kubectl logs -n kube-system -l component=kube-scheduler
+
+# Check GPU device plugin
+kubectl logs -n kube-system -l name=nvidia-device-plugin-ds
+
+# Verify GPU on worker node
+ssh gpu-server-02 'nvidia-smi'</code></pre>
+    </div>
+
+    <div class="container">
+        <h2>📚 Additional Resources</h2>
+        <ul>
+            <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/">Kubernetes Pod Priority and Preemption Documentation</a></li>
+            <li><a href="https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/">Schedule GPUs in Kubernetes</a></li>
+            <li><a href="https://github.com/NVIDIA/k8s-device-plugin">NVIDIA Device Plugin for Kubernetes</a></li>
+            <li><a href="https://kubernetes.io/docs/reference/kubectl/cheatsheet/">Kubectl Cheat Sheet</a></li>
+        </ul>
+
+        <h2>🎯 Summary</h2>
+        <p>You have successfully built a 5-node Kubernetes cluster with:</p>
+        <ul>
+            <li>✅ One control plane node (gpu-server-01)</li>
+            <li>✅ Four GPU-enabled worker nodes (gpu-server-02 through 05)</li>
+            <li>✅ NVIDIA GPU support with device plugin</li>
+            <li>✅ Priority-based scheduling with multiple priority classes</li>
+            <li>✅ Pod preemption capabilities for high-priority workloads</li>
+        </ul>
+        
+        <div class="note">
+            <strong>💡 Next Steps:</strong>
+            <ul>
+                <li>Set up monitoring with Prometheus and Grafana</li>
+                <li>Configure resource quotas per namespace</li>
+                <li>Implement auto-scaling for GPU workloads</li>
+                <li>Set up persistent storage for ML model training</li>
+                <li>Configure network policies for security</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 2rem; color: #666;">
+        <p>© 2026 UM-CSE-K8S | Kubernetes Priority Scheduler Guide</p>
+    </footer>
+</body>
+</html>

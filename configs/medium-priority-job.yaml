@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: medium-priority-training
+spec:
+  template:
+    metadata:
+      labels:
+        priority: medium
+    spec:
+      priorityClassName: medium-priority-gpu
+      containers:
+      - name: pytorch-training
+        image: pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
+        command: ["python", "-c", "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}')"]
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+      restartPolicy: Never
+  backoffLimit: 4
