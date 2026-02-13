@@ -137,11 +137,12 @@
         <div class="server-list">
             <h3>Cluster Architecture</h3>
             <ul>
-                <li><strong>gpu-server-01:</strong> Control Plane Node (Master)</li>
-                <li><strong>gpu-server-02:</strong> Worker Node with GPU</li>
-                <li><strong>gpu-server-03:</strong> Worker Node with GPU</li>
-                <li><strong>gpu-server-04:</strong> Worker Node with GPU</li>
-                <li><strong>gpu-server-05:</strong> Worker Node with GPU</li>
+                <li><strong>gaia:</strong> Control Plane Node (Master)</li>
+                <li><strong>csegpu1:</strong> Worker Node with GPU</li>
+                <!--</font><li><strong>csegpu2:</strong> Worker Node with GPU</li>
+                <li><strong>csegpu3:</strong> Worker Node with GPU</li>
+                <li><strong>csegpu4:</strong> Worker Node with GPU</li>
+                -->
             </ul>
         </div>
 
@@ -155,7 +156,7 @@
         
         <h3>Hardware Requirements</h3>
         <ul>
-            <li>5 servers with Ubuntu 20.04 or 22.04 LTS</li>
+            <li>1-5 GPU servers with Ubuntu 24.04.4 LTS</li>
             <li>At least 4 GB RAM per node (8 GB recommended)</li>
             <li>2 CPUs or more per node</li>
             <li>NVIDIA GPUs installed on worker nodes</li>
@@ -171,7 +172,10 @@ sudo apt-get upgrade -y</code></pre>
         <p>Kubernetes requires swap to be disabled:</p>
         <pre><code># Run on all 5 servers
 sudo swapoff -a
-sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab</code></pre>
+# sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab # this does not work when \tab was used than spaces
+sudo sed -i '/swap/s/^/#/g' /etc/fstab
+more /etc/fstab  # to verify the above command 
+</code></pre>
 
         <h3>Step 3: Configure Kernel Modules</h3>
         <pre><code># Run on all 5 servers
@@ -193,22 +197,21 @@ EOF
 
 sudo sysctl --system</code></pre>
 
-        <h3>Step 5: Set Hostnames</h3>
+        <h3>Step 5: [Skip this step at CSE] Set Hostnames </h3><!-- 
         <pre><code># On each server, set appropriate hostname
 sudo hostnamectl set-hostname gpu-server-01  # On master
 sudo hostnamectl set-hostname gpu-server-02  # On worker 1
 sudo hostnamectl set-hostname gpu-server-03  # On worker 2
 sudo hostnamectl set-hostname gpu-server-04  # On worker 3
 sudo hostnamectl set-hostname gpu-server-05  # On worker 4</code></pre>
+<-->
 
         <h3>Step 6: Update Hosts File</h3>
         <pre><code># Run on all 5 servers - replace with your actual IP addresses
 cat &lt;&lt;EOF | sudo tee -a /etc/hosts
-192.168.1.101 gpu-server-01
-192.168.1.102 gpu-server-02
-192.168.1.103 gpu-server-03
-192.168.1.104 gpu-server-04
-192.168.1.105 gpu-server-05
+# bypass DNS server outside of the cluster.
+141.212.113.122 gaia.eecs.umich.edu     gaia
+141.212.113.225 csegpu1.eecs.umich.edu  csegpu1
 EOF</code></pre>
     </div>
 
@@ -216,7 +219,7 @@ EOF</code></pre>
         <h2>3. Installing Kubernetes Components</h2>
 
         <h3>Step 1: Install Container Runtime (containerd)</h3>
-        <pre><code># Run on all 5 servers
+        <pre><code># Run on all servers
 sudo apt-get update
 sudo apt-get install -y apt-transport-https ca-certificates curl
 
@@ -227,7 +230,8 @@ sudo apt-get install -y containerd
 sudo mkdir -p /etc/containerd
 containerd config default | sudo tee /etc/containerd/config.toml
 
-# Enable SystemdCgroup
+# Enable SystemdCgroup, 
+# to ensure consistency and stability in resource management
 sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
 
 # Restart containerd
@@ -235,7 +239,7 @@ sudo systemctl restart containerd
 sudo systemctl enable containerd</code></pre>
 
         <h3>Step 2: Install Kubernetes Packages</h3>
-        <pre><code># Run on all 5 servers
+        <pre><code># Run on all servers
 # Add Kubernetes apt repository
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
@@ -254,9 +258,9 @@ sudo systemctl enable kubelet</code></pre>
         <h2>4. Initializing the Cluster</h2>
 
         <h3>Step 1: Initialize Control Plane (Master Node)</h3>
-        <p>Run this only on <strong>gpu-server-01</strong>:</p>
-        <pre><code># On gpu-server-01 (master)
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.1.101
+        <p>Run this only on <strong>gaia</strong>:</p>
+        <pre><code># On gaia (master)
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=141.212.113.122
 
 # After successful initialization, set up kubectl
 mkdir -p $HOME/.kube
@@ -272,29 +276,26 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config</code></pre>
         <pre><code>kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml</code></pre>
 
         <h3>Step 3: Join Worker Nodes</h3>
-        <p>Run on <strong>gpu-server-02, gpu-server-03, gpu-server-04, gpu-server-05</strong>:</p>
+        <p>Run on <strong>csegpu1, csegpu2, etc.</strong>:</p>
         <pre><code># Use the join command from kubeadm init output
-sudo kubeadm join 192.168.1.101:6443 --token &lt;token&gt; \
+sudo kubeadm join 141.212.113.122:6443 --token &lt;token&gt; \
     --discovery-token-ca-cert-hash sha256:&lt;hash&gt;</code></pre>
 
         <h3>Step 4: Verify Cluster</h3>
-        <p>Run on <strong>gpu-server-01</strong> (master):</p>
+        <p>Run on <strong>gaia</strong> (master):</p>
         <pre><code>kubectl get nodes
 
 # Expected output:
 # NAME            STATUS   ROLES           AGE   VERSION
-# gpu-server-01   Ready    control-plane   5m    v1.28.x
-# gpu-server-02   Ready    &lt;none&gt;          3m    v1.28.x
-# gpu-server-03   Ready    &lt;none&gt;          3m    v1.28.x
-# gpu-server-04   Ready    &lt;none&gt;          3m    v1.28.x
-# gpu-server-05   Ready    &lt;none&gt;          3m    v1.28.x</code></pre>
+# vyl-hpe   Ready      control-plane   7m1s   v1.28.15
+# csegpu1   NotReady   <none>          82s    v1.28.15
     </div>
 
     <div class="container" id="gpu-support">
         <h2>5. Setting Up GPU Support</h2>
 
         <h3>Step 1: Install NVIDIA Drivers</h3>
-        <p>Run on worker nodes (<strong>gpu-server-02 through gpu-server-05</strong>):</p>
+        <p>Run on worker nodes (<strong>csegpu1 through csegpu?</strong>):</p>
         <pre><code># Install NVIDIA driver
 sudo apt-get update
 sudo apt-get install -y nvidia-driver-535

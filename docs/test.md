@@ -25,7 +25,7 @@ We have tested following:
 ## Step 6: Priority 
 Partially worked, except there is no GPU so many pods cannot be deployed on the nodes.
 
-- Here is an [example(https://medium.com/@muppedaanvesh/a-hands-on-guide-to-kubernetes-priority-classes-%EF%B8%8F-e4d37d789311)] of priority class without GPU. ([PDF](./Kubernetes_Priority_Classes.pdf))
+- Here is an [example](https://medium.com/@muppedaanvesh/a-hands-on-guide-to-kubernetes-priority-classes-%EF%B8%8F-e4d37d789311) of priority class without GPU. ([PDF](./Kubernetes_Priority_Classes.pdf))
 - [How to delete the applied pods](https://www.google.com/search?q=how+to+remove+running+pod+using+yaml&oq=how+to+remove+running+pod+using+yaml&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigATIHCAMQIRigATIHCAQQIRigATIHCAUQIRigATIHCAYQIRifBTIHCAcQIRifBTIHCAgQIRifBTIHCAkQIRiPAtIBCDg2ODlqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8)
 - [SSH Jump Host](https://wiki.gentoo.org/wiki/SSH_jump_host) inside ```.ssh/config```
 ## Nest Steps: 
