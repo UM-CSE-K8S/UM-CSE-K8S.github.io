@@ -1,5 +1,7 @@
 # Kubernetes Mockup System
 
+
+
 We have installed following VMs to test Kubernetes on ```gaia.eecs.umich.edu```:
 
 | hostname | Role   | IP Address    | Hardware | Software |
@@ -88,9 +90,7 @@ and ask for username and password.  The default should be ```admin``` and ```pro
 kubectl get secret --namespace monitoring prometheus-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 ```
 
-    - Paste what is stored in your clipboard in above step here and click "Authenticate". 
-    - ![Screenshot](./headlamp-token.png)
-- Once completed above steps, you should be able to see Headlamp UI to visualize various namespaces, pods, nodes, etc. instead this k8s cluster. 
+- Once completed above steps, you should be able to see Grafana UI to visualize various parameters that Prometheus collected from this k8s cluster.  Prometheus UI will be discussed in a different WebUI (TBD) later.
     - For example, the [Grafana CPU Usage](http://localhost:3000/d/200ac8fdbfbb74b39aff88118e4d1c2c/kubernetes-compute-resources-node-pods?orgId=1&refresh=10s) should show CPU utilization for various PODS below [CPU Usage](./grafana-cpu.png)
 
 
