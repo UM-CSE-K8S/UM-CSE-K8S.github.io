@@ -241,9 +241,9 @@ sudo systemctl enable containerd</code></pre>
         <h3>Step 2: Install Kubernetes Packages</h3>
         <pre><code># Run on all servers
 # Add Kubernetes apt repository
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 # Install kubelet, kubeadm, and kubectl
 sudo apt-get update
@@ -260,7 +260,7 @@ sudo systemctl enable kubelet</code></pre>
         <h3>Step 1: Initialize Control Plane (Master Node)</h3>
         <p>Run this only on <strong>gaia</strong>:</p>
         <pre><code># On gaia (master)
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=141.212.113.122
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=141.212.113.122 --cri-socket=unix:///run/cri-dockerd.sock
 
 # After successful initialization, set up kubectl
 mkdir -p $HOME/.kube
@@ -271,9 +271,21 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config</code></pre>
             <strong>📝 Important:</strong> Save the <code>kubeadm join</code> command that appears after initialization. You'll need it to join worker nodes.
         </div>
 
-        <h3>Step 2: Install Pod Network (Flannel)</h3>
-        <p>Run on <strong>gpu-server-01</strong> (master):</p>
-        <pre><code>kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml</code></pre>
+        <h3>Step 2: Install Cilium</h3>
+        <p>Run on <strong>gaia</strong> (master):</p>
+        <!--pre><code>
+            kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+        </code></pre-->
+
+        <pre><code>
+        # For Linux (amd64 example)
+        curl -LO https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
+        sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+        rm cilium-linux-amd64.tar.gz
+        cilium install --namespace kube-system
+        cilium status
+        </code></pre>
+        or alternatively install cilium using helm, after helm is installed, see [here for details](https://www.google.com/search?q=how+to+install+cilium+CNI+for+kubernetes&oq=how+to+install+cilium+CNI+for+kubernetes&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigATIHCAMQIRigATIHCAQQIRigATIHCAUQIRigAdIBBzE0OWowajeoAgCwAgA&sourceid=chrome&ie=UTF-8).
 
         <h3>Step 3: Join Worker Nodes</h3>
         <p>Run on <strong>csegpu1, csegpu2, etc.</strong>:</p>
