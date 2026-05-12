@@ -30,7 +30,7 @@ sudo apt-get -y install doca-ofed
 
 - downloaded [mlxup](https://network.nvidia.com/support/firmware/mlxup-mft/)  and query the NIC card with commands:
 
-``` 
+```
 vyl@csegpu1:~/ofed$ lspci |grep mellanox -i
 0000:8e:00.0 Infiniband controller: Mellanox Technologies MT2910 Family [ConnectX-7]
 
