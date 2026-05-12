@@ -32,9 +32,11 @@ sudo apt-get -y install doca-ofed
 
 ```
 vyl@csegpu1:~/ofed$ lspci |grep mellanox -i
+
 0000:8e:00.0 Infiniband controller: Mellanox Technologies MT2910 Family [ConnectX-7]
 
 vyl@csegpu1:~/ofed$ sudo ./mlxup -d 0000:8e:00.0
+
 Querying Mellanox devices firmware ...
 
 Device #1:
@@ -65,4 +67,5 @@ Done
 Restart needed for updates to take effect.
 Log File: /tmp/mlxup_workdir/mlxup-20260512_145143_60339.log
 vyl@csegpu1:~/ofed$ 
+
 ```
