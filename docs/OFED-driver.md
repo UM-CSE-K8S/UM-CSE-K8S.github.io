@@ -43,7 +43,7 @@ vyl@csegpu2:~$
 ```
 
 
-## Uninstall DOCA_OFED Driver
+## 3. Uninstall DOCA_OFED Driver, if you have to
 
 If we need to uninstall DOCA_OFED, use the first step in [DOCA  Doc v3.3.0](https://docs.nvidia.com/doca/sdk/doca-host-installation-and-upgrade/index.html).  
 ```
@@ -52,50 +52,53 @@ host# sudo /usr/sbin/ofed_uninstall.sh --force
 host# sudo apt-get autoremove
 ```
 
-## Install DOCA OFED Driver etc.
+## 4. Install DOCA OFED Driver etc.
 - Goto [nVidia DOCA Download page](https://developer.nvidia.com/doca-downloads?deployment_platform=Host-Server) (the old name is [MLNX_OFED](https://network.nvidia.com/products/infiniband-drivers/linux/mlnx_ofed/), which will expired support in Oct. 2027.)
 
-  - We need to select: Host Server - DOCA Host - Linux - X86_64 - doca-ofed - Ubuntu - 24.04 - deb(local).  See below ![NVidia OFED Ubuntu Driver Selection Chart](./nvidia-doca-ofed-ubuntu-driver.png)
+  - One needs to select: Host Server - DOCA Host - Linux - X86_64 - doca-ofed - Ubuntu - 24.04 - deb(local).  See below ![NVidia OFED Ubuntu Driver Selection Chart](./nvidia-doca-ofed-ubuntu-driver.png)
 
   - follow the installation instructions: 
-```
-wget https://www.mellanox.com/downloads/DOCA/DOCA_v3.3.0/host/doca-host_3.3.0-088000-26.01-ubuntu2404_amd64.deb
-sudo dpkg -i doca-host_3.3.0-088000-26.01-ubuntu2404_amd64.deb
-sudo apt-get update
-sudo apt-get -y install doca-ofed
-```
-We want to verify the SHA256 checksum by 
-```
-vyl@csegpu2:~/ofed$ check256sum -c SHA256SUMS --ignore-missing  
-doca-host_3.3.0-088000-26.01-ubuntu2404_amd64.deb: OK
-mlxup: OK
-```
+  ```
+  wget https://www.mellanox.com/downloads/DOCA/DOCA_v3.3.0/host/doca-host_3.3.0-088000-26.01-ubuntu2404_amd64.deb
+  sudo dpkg -i doca-host_3.3.0-088000-26.01-ubuntu2404_amd64.deb
+  sudo apt-get update
+  sudo apt-get -y install doca-ofed
+  ```
+  - We want to verify the SHA256 checksum by 
+  ```
+  vyl@csegpu2:~/ofed$ check256sum -c SHA256SUMS --ignore-missing  
+  doca-host_3.3.0-088000-26.01-ubuntu2404_amd64.deb: OK
+  mlxup: OK
+  ```
+- One needs to repeat above for doca-networking too.
 
-### In one case, above installation failed on csegpu1, so eventually we upgrade nvidia GPU driver to 595.71.05 instead of 595.48.01
+### 4.2 In case of Doca-* installation has a conflict with linux header on csegpu1, we upgraded NVidia GPU driver to 595.71.05 from 595.48.01
 - Update the open source NVidia Driver to [NVidia 595.71.05](https://developer.nvidia.com/datacenter-driver-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=24.04&target_type=deb_local).  This avoid the conflicts between linux header and NVidia driver 595.58 when we install DOCA OFED driver. 
 
 
 
-## enable IP over IB: 
+## 5. Enable IP over IB: 
 
-## 
-After install OFED driver, use this article on [How to Configure InfiniBand on Ubuntu](https://oneuptime.com/blog/post/2026-03-02-how-to-configure-infiniband-on-ubuntu/view), and skip the MLNX_OFED installation step, but use the rest of the steps. 
+After install OFED driver, use the steps on [How to Configure InfiniBand on Ubuntu](https://oneuptime.com/blog/post/2026-03-02-how-to-configure-infiniband-on-ubuntu/view), with following changes:
 
-Following changes should be made in the above steps:
-- the service for opensm should be opensmd.  So use commands instead:
-  ```
+1. Skip the MLNX_OFED installation, since we have used newer DOCA-OFED above.
+2. the service name for ```opensm``` should be ```opensmd```.  So the new commands should be:
+   ```
    sudo systemctl enable opensmd
    sudo systemctl start opensmd
 
    sudo journalctl -u opensmd | tail -20
    ```
+3. Whenever you see the failure of ```sudo /etc/init.d/openibd restart```, try to ```sudo systemctl stop opensmd``` first.
 
-- Whenever you see the failure of ```sudo /etc/init.d/openibd restart```, try to ```sudo systemctl stop opensmd``` first.
+## 6. Verify Cable is LinkUp
 
+We want to make sure MST (Mellanox Software Tools) service is started using following command first:
+```
+sudo mst restart
+```
 
-### Verify Cable is LinkUp
-
-use the command in [this video at 1:45](https://youtu.be/a1SsyS2i1Bw?si=6kbTG08ZRp5EiCKm&t=105), we can see both NICs have LinkUp state.
+Then use the command in [this video at 1:45](https://youtu.be/a1SsyS2i1Bw?si=6kbTG08ZRp5EiCKm&t=105), we can see both NICs have LinkUp state.
 ```
 vyl@csegpu1:~$ sudo mlxlink -d /dev/mst/mt4129_pciconf0 --show_mo
 
@@ -116,78 +119,14 @@ Supported Cable Speed              : 0x000000f1 (NDR,HDR,EDR,FDR,SDR)
 
 Troubleshooting Info
 --------------------
-Status Opcode                      : 0 
-Group Opcode                       : N/A 
-Recommendation                     : No issue was observed 
-
-Tool Information
-----------------
-Firmware Version                   : 28.46.3048 
-amBER Version                      : 6.4 
-MFT Version                        : 4.35.0-159 
-
-Module Info
------------
-Temperature [C]                    : 0 [0..0]
-Voltage [mV]                       : 0 [0..0]
-Bias Current [mA]                  : 0,0,0,0 [0..0]
-Rx Power Current [dBm]             : 0,0,0,0 [0..0]
-Tx Power Current [dBm]             : 0,0,0,0 [0..0]
-Identifier                         : OSFP
-Compliance                         : IB NDR
-Cable Technology                   : Copper cable, passive, unequalized
-Cable Type                         : Passive copper cable
-OUI                                : Nvidia
-Vendor Name                        : FS
-Vendor Part Number                 : OSFPFL-400G-PC01
-Vendor Serial Number               : C2604279049-2
-Rev                                : 00
-Wavelength [nm]                    : N/A
-Transfer Distance [m]              : 1
-Attenuation (5g,7g,12g,25g)[dB]    : 0,0,0,0
-FW Version                         : N/A
-Digital Diagnostic Monitoring      : Yes
-Power Class                        : N/A
-MAX Power                          : N/A
-CDR RX                             : N/A
-CDR TX                             : N/A
-LOS Alarm                          : N/A
-SNR Media Lanes [dB]               : N/A
-SNR Host Lanes [dB]                : N/A
-IB Cable Width                     : 1x,2x,4x,8x
-Memory Map Revision                : 64
-Linear Direct Drive                : 0
-Cable Breakout                     : OSFP to OSFP
-SMF Length                         : N/A
-Cable Rx AMP                       : N/A
-Cable Rx Emphasis (Pre)            : N/A
-Cable Rx Post Emphasis             : N/A
-Cable Tx Equalization              : N/A
-Wavelength Tolerance               : N/A
-Module State                       : Ready state
-DataPath state [per lane]          : N/A,N/A,N/A,N/A
-Rx Output Valid [per lane]         : 0,0,0,0
-Nominal bit rate                   : N/A
-Rx Power Type                      : OMA
-Manufacturing Date                 : 09_04_26
-Active Set Host Compliance Code    : IB NDR
-Active Set Media Compliance Code   : N/A
-Error Code Response                : ConfigUndefined
-Module FW Fault                    : 0
-DataPath FW Fault                  : 0
-Tx Fault [per lane]                : 0,0,0,0
-Tx LOS [per lane]                  : 0,0,0,0
-Tx CDR LOL [per lane]              : 0,0,0,0
-Rx LOS [per lane]                  : 1,0,1,1
-Rx CDR LOL [per lane]              : 1,1,1,1
-Tx Adaptive EQ Fault [per lane]    : 0,0,0,0
+...
 
 vyl@csegpu1:~$ 
 ```
 
-## Performance Testing
+## 7. Performance Testing
 
-Using a set of commands to test performance below:
+Using a set of commands in the end of above article on [How to Configure InfiniBand on Ubuntu](https://oneuptime.com/blog/post/2026-03-02-how-to-configure-infiniband-on-ubuntu/view) to test performance.  Be aware that the server (csegpu2) should run the command without the ```server_name``` below.  The following only shows the commands on the client side.
 
 ```
 vyl@csegpu1:~$ ib_send_bw -d mlx5_0  csegpu2
@@ -292,3 +231,6 @@ Conflicting CPU frequency values detected: 3295.212000 != 4999.302000. CPU Frequ
 ---------------------------------------------------------------------------------------
 vyl@csegpu1:~$ 
 ```
+
+## Conclusion
+Infiniband NICs can provide up to 400Gbps speed and less than 5 usecond latency between two GPU servers.
