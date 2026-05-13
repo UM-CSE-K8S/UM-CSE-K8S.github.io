@@ -9,7 +9,7 @@ We have installed following VMs to test Kubernetes on ```gaia.eecs.umich.edu```:
 | k0       | master | 192.168.8.146 | 2 core 8G Mem 50GB HDD | Ubuntu 24.04.3 LTS |
 | k1       | worker | 192.168.8.147 | 2 core 8G Mem 20GB HDD | Ubuntu 24.04.3 LTS |
 | k2       | worker | 192.168.8.148 |  2 core 8G Mem 20GB HDD | Ubuntu 24.04.3 LTS |
-| k2       | worker | 192.168.8.149 |  2 core 8G Mem 20GB HDD | Ubuntu 24.04.3 LTS |
+| k3       | worker | 192.168.8.149 |  2 core 8G Mem 20GB HDD | Ubuntu 24.04.3 LTS |
 
 ## How to Access
 

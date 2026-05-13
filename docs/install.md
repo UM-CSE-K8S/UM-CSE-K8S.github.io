@@ -19,26 +19,42 @@ This playbook performs the automated steps from the manual steps listed on this 
 
 - Kubernetes version has been moved to 1.35 using variable ```kube_minor```.
 - Calico CNI was replaced with Cilium CNI v1.19.0
-- Currently we are using containerd.service but it can be modified to use docker.io as discussed in this Medium article on [](https://medium.com/@osama.abusitta/step-by-step-building-a-kubernetes-cluster-from-scratch-on-ubuntu-24-04-2025-guide-822452f14dab)
+- Currently we are using containerd.service but it can be modified to use docker.io as discussed in [this Medium article](https://medium.com/@osama.abusitta/step-by-step-building-a-kubernetes-cluster-from-scratch-on-ubuntu-24-04-2025-guide-822452f14dab), cached in [the PDF format](./Step-by-Step_%20Building%20a%20Kubernetes%20Cluster%20from%20Scratch%20on%20Ubuntu%2024.04%20(2025%20Guide)%20_%20by%20Osama%20Abusitta%20_%20Medium.pdf).
 - To remove this kubernetes installation, see [this page]() or this series of commands:
-```kubectl cordon <node-name>```
-```kubectl drain <node-name> --delete-emptydir-data --force --ignore-daemonsets ``` 
-```kubectl delete node <node-name>```
+
+```
+kubectl cordon <node-name>
+```
+
+```
+kubectl drain <node-name> --delete-emptydir-data --force --ignore-daemonsets
+``` 
+```
+kubectl delete node <node-name>
+```
+
 - When CNI does not work, debug it with [these hints](https://www.google.com/search?q=after+install+kubernetes+on+master+node%2C+the+node+is+NotReady&oq=after+install+kubernetes+on+master+node%2C+the+node+is+NotReady&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRiPAtIBCTExMjAyajBqN6gCALACAA&sourceid=chrome&ie=UTF-8)
-- For missing CNI, if Calico, use a command in the comment by Michael as ```kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml```
-- For missing CNI, use cilium with [how to install cilium CNI for kubernetes](https://www.google.com/search?q=how+to+install+cilium+CNI+for+kubernetes&oq=how+to+install+cilium+CNI+for+kubernetes&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigATIHCAMQIRigATIHCAQQIRigATIHCAUQIRigAdIBBzE0OWowajeoAgCwAgA&sourceid=chrome&ie=UTF-8)
+- For missing CNI, if Calico is wanted as CNI, use the command in the comment by Michael or below to install it: 
+```
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+```
+- For missing CNI, if Cilium is desired, follow ["how to install Cilium CNI for Kubernetes"](https://www.google.com/search?q=how+to+install+cilium+CNI+for+kubernetes&oq=how+to+install+cilium+CNI+for+kubernetes&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigATIHCAMQIRigATIHCAQQIRigATIHCAUQIRigAdIBBzE0OWowajeoAgCwAgA&sourceid=chrome&ie=UTF-8)
 - Here is [a comparison of Calico and Cilium](https://www.google.com/search?q=compare+K8S+CNI+between+calico+and+cilium&sca_esv=9447ce1ae06b4598&sxsrf=ANbL-n7pXpn4nkNgU9kstLGxQGJmukD1Lw%3A1770506579834&ei=U8mHaYe7Mqu5p84P6NnG-Q8&biw=1204&bih=713&ved=0ahUKEwjHsI3-wsiSAxWr3MkDHeisMf8Q4dUDCBM&uact=5&oq=compare+K8S+CNI+between+calico+and+cilium&gs_lp=Egxnd3Mtd2l6LXNlcnAiKWNvbXBhcmUgSzhTIENOSSBiZXR3ZWVuIGNhbGljbyBhbmQgY2lsaXVtMgUQABjvBTIFEAAY7wUyCBAAGKIEGIkFMgUQABjvBTIIEAAYgAQYogRItEVQxx1Yz0BwAngBkAEAmAFtoAHrCqoBBDE0LjK4AQPIAQD4AQGYAhKgAsYLwgIKEAAYsAMY1gQYR8ICBBAhGAqYAwCIBgGQBgiSBwQxNC40oAfvO7IHBDEyLjS4B78LwgcGMS4xMS42yAcwgAgA&sclient=gws-wiz-serp)
 - [Install Helm](https://helm.sh/docs/intro/install/)
-- For k8s visualization tools,  installing [kube-dash](https://www.digitalocean.com/community/conceptual-articles/kubernetes-visualization-tools#kubernetes-dashboard-kube-dashboard), we installed [headlamp](https://headlamp.dev/docs/latest/installation/) instead.  Very nice tool to visualize k8s.
+- For k8s visualization tools,  we liked the [headlamp](https://headlamp.dev/docs/latest/installation/). 
 - There is a Medium article on [Raspberry Pi Kubernetes: A Hassle-Guide with Ansible Magic](https://ebenamor.medium.com/raspberry-pi-kubernetes-a-hassle-guide-with-ansible-magic-5e70ec4d5ec9). ToDo
-- Installed [Headlamp](https://headlamp.dev/)
 
 
 ## Step 5: GPU server
-Currently we see issues on installing Cilium Envoy on csegpu1.  It is always showing "CrashLoopBackOff" state. Debugging it with several recent resolutions seem not working yet. 
+- Currently we see issues on installing Cilium Envoy on ```csegpu1```.  It is always showing "CrashLoopBackOff" state for ```Envoy container```. Debugging it with several recent resolutions seem not working yet. 
+
+- on ```csegpu2```, following issues:
+  - the boot sequence is currently broken, and F1 has to be pressed to continue the boot into Ubuntu Grub. 
+  - we have enabled "iommu=pt" inside ```/etc/default/grub``` to support high performance PCIe, to be tested.
+  - Cilium issue exited in csegpu1 is to be tested.
 
 ## Step 6: Priority 
-Partially worked on CPU based VMs.
+This is tested and worked on the k8s installed on VMs.  to be tested in GPU K8S once Cilium is tested working there.
 
 - Here is an [example](https://medium.com/@muppedaanvesh/a-hands-on-guide-to-kubernetes-priority-classes-%EF%B8%8F-e4d37d789311) of priority class without GPU. ([PDF](./Kubernetes_Priority_Classes.pdf))
 - [How to delete the applied pods](https://www.google.com/search?q=how+to+remove+running+pod+using+yaml&oq=how+to+remove+running+pod+using+yaml&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigATIHCAMQIRigATIHCAQQIRigATIHCAUQIRigATIHCAYQIRifBTIHCAcQIRifBTIHCAgQIRifBTIHCAkQIRiPAtIBCDg2ODlqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8)

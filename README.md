@@ -1,4 +1,5 @@
-<<<<<<< copilot/build-kubernetes-with-priority-scheduler
+
+build-kubernetes-with-priority-scheduler
 # Kubernetes Priority Scheduler for GPU Servers
 
 This repository provides a comprehensive guide for building a Kubernetes cluster with priority-based scheduling for GPU workloads across five servers.
@@ -62,8 +63,8 @@ Feel free to open issues or submit pull requests to improve this guide.
 ## 📄 License
 
 This project is open source and available for educational purposes.
-=======
-# UM-CSE-K8S.github.io
+
+## UM-CSE-K8S.github.io
 Showing progresses on the k8s priority
 
 ## Flowchart Diagram
@@ -92,4 +93,15 @@ To regenerate the diagram images from the source file:
 dot -Tpng flowchart.dot -o flowchart.png
 dot -Tsvg flowchart.dot -o flowchart.svg
 ```
->>>>>>> main
+
+## UEFI0031 Error on csegpu2, a Dell PowerEdge XE7745
+
+- Found this [Dell report](https://www.dell.com/community/en/conversations/rack-servers/xe9680-encounters-an-uefi0031-pcie-downtrain-issue-during-the-boot-process/692ff81f72c11a30ab9f9f67).
+
+sudo lspci -vv | grep -E "^[0-9a-f]{2}:[0-9a-f]{2}\\.[0-9] |LnkCap:|LnkSta:" 
+
+## Search on using RTX6000 server with Cilium
+
+- Added PCI passthrough by ```GRUB_CMDLINE_LINUX_DEFAULT="intel_iommu=on iommu=pt"``` in ```/etc/default/grub```. 
+See [this article](https://www.google.com/search?q=how+to+setup+iommu%3Dpt+in+the+GRUB+bootloader+for+ubuntu+24.04&oq=how+to+setup+iommu%3Dpt+in+the+GRUB+bootloader+for+ubuntu+24.04&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBCDcxNDhqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8) for details.  the option 
+- ```iommu=pt``` is explained [here](https://www.google.com/search?q=what+iommu%3Dpt+will+do+on+ubuntu+grub&oq=what+iommu%3Dpt+will+do+on+ubuntu+grub&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigATIHCAMQIRigATIHCAQQIRigATIHCAUQIRigATIHCAYQIRiPAjIHCAcQIRiPAtIBCDUxODRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8).
